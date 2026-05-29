@@ -53,7 +53,7 @@ Software Used
 
 
 🔷 Block Diagram
-Block_diagram.png
+![Block Diagram](block_diagram.png)
 
 
 ⚙️ Working Principle
