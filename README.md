@@ -49,6 +49,9 @@ Software Used
 * GPIO Library
 * Embedded Systems
 * RFID Technology
+🔷 Block Diagram
+Block_diagram.png
+
 
 ⚙️ Working Principle
 
