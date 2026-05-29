@@ -1,0 +1,154 @@
+import time
+import RPi.GPIO as GPIO
+from mfrc522 import SimpleMFRC522
+from rplcd.i2c import CharLCD
+
+# --- Hardware Config ---
+GPIO.setwarnings(False)
+BUZZER_PIN = 17
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(BUZZER_PIN, GPIO.OUT)
+
+# Initialize Hardware Components
+reader = SimpleMFRC522()
+lcd = CharLCD(i2c_expander='PCF8574', address=0x27, port=1, cols=16, rows=2)
+
+# System Variables
+running_total = 0
+current_balance = 1000
+
+print("RFID reader ready. Place a card near the reader...")
+
+# Update LCD to Ready State
+lcd.clear()
+lcd.cursor_pos = (0, 0)
+lcd.write_string("System Ready")
+lcd.cursor_pos = (1, 0)
+lcd.write_string("Scan Items...")
+
+# --- Main Program Loop ---
+while True:
+    # 1. Read RFID Data
+    id, text = reader.read()
+    
+    if id:
+        # Format the text data from the card
+        clean_text = str(text).strip().lower()
+        print("\nCard Detected!")
+        print("ID:", id)
+        print("Text:", clean_text)
+        
+        # Short feedback beep using GPIO
+        GPIO.output(BUZZER_PIN, GPIO.HIGH)
+        time.sleep(0.1)
+        GPIO.output(BUZZER_PIN, GPIO.LOW)
+
+        # 2. Condition: Payment/Balance Card Detected
+        if "balance" in clean_text or clean_text == "":
+            print("Available Balance:", current_balance)
+            print("total:", running_total)
+            
+            # Check if user has enough money
+            if current_balance < running_total:
+                print("Insufficient amount")
+                
+                # Display alert on LCD
+                lcd.clear()
+                lcd.cursor_pos = (0, 0)
+                lcd.write_string("Insufficient Bal")
+                lcd.cursor_pos = (1, 0)
+                lcd.write_string("Total: Rs " + str(running_total))
+                
+                # Double Alarm Beep
+                GPIO.output(BUZZER_PIN, GPIO.HIGH)
+                time.sleep(0.3)
+                GPIO.output(BUZZER_PIN, GPIO.LOW)
+                time.sleep(0.1)
+                GPIO.output(BUZZER_PIN, GPIO.HIGH)
+                time.sleep(0.3)
+                GPIO.output(BUZZER_PIN, GPIO.LOW)
+                
+                # Top-Up loop until balance is sufficient
+                while current_balance < running_total:
+                    user_input = input("Enter the top up amount: ")
+                    if user_input.isdigit():
+                        current_balance = current_balance + int(user_input)
+                        print("Balance:", current_balance)
+                    else:
+                        print("Invalid numeric amount. Try again.")
+            
+            # Finalize deduction if balance is good
+            if current_balance >= running_total:
+                current_balance = current_balance - running_total
+                print("purchase done. Balance:", current_balance)
+                
+                # Display Success Screen
+                lcd.clear()
+                lcd.cursor_pos = (0, 0)
+                lcd.write_string("Payment Success")
+                lcd.cursor_pos = (1, 0)
+                lcd.write_string("Bal Rs " + str(current_balance))
+                
+                # Long success beep
+                GPIO.output(BUZZER_PIN, GPIO.HIGH)
+                time.sleep(0.4)
+                GPIO.output(BUZZER_PIN, GPIO.LOW)
+                
+                # Reset shopping variables for next customer
+                running_total = 0
+                time.sleep(4)
+                
+                # Reset LCD back to scanning mode
+                lcd.clear()
+                lcd.cursor_pos = (0, 0)
+                lcd.write_string("System Ready")
+                lcd.cursor_pos = (1, 0)
+                lcd.write_string("Scan Items...")
+
+        # 3. Condition: Product Tag Detected
+        else:
+            item_name = clean_text
+            print("the item is", item_name)
+            
+            # Find item unit price using structural checks instead of lookups
+            unit_price = 0
+            if item_name == "sugar":
+                unit_price = 43
+            elif item_name == "redlabel":
+                unit_price = 75
+            elif item_name == "milk":
+                unit_price = 50
+            else:
+                print("Warning: Item not found in database system.")
+            
+            # Input validation loop for Quantity
+            valid_qty = False
+            quantity = 0
+            while not valid_qty:
+                qty_input = input("enter the quantity: ")
+                if qty_input.isdigit():
+                    quantity = int(qty_input)
+                    valid_qty = True
+                else:
+                    print("Please enter a valid whole number.")
+            
+            # Calculations
+            item_total = unit_price * quantity
+            running_total = running_total + item_total
+            print("the price of the item is :", item_total)
+            
+            # Step 1: Display scanned item summary on LCD
+            lcd.clear()
+            lcd.cursor_pos = (0, 0)
+            lcd.write_string("Item : " + item_name.capitalize())
+            lcd.cursor_pos = (1, 0)
+            lcd.write_string("Qty  : " + str(quantity))
+            
+            time.sleep(2) # Give user a moment to see the item name and qty
+            
+            # Step 2: Swap display to show updated price matrix
+            lcd.clear()
+            lcd.cursor_pos = (0, 0)
+            lcd.write_string("Price: Rs " + str(item_total))
+            lcd.cursor_pos = (1, 0)
+            lcd.write_string("Total: Rs " + str(running_total))
