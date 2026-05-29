@@ -11,13 +11,21 @@ This project demonstrates real-time billing automation using Embedded Systems, R
 🚀 Features
 
 ✅ RFID-Based Product Scanning
+
 ✅ Automatic Bill Generation
+
 ✅ Quantity-Based Cost Calculation
+
 ✅ RFID Balance Card Payment
+
 ✅ Automatic Balance Deduction
+
 ✅ Insufficient Balance Detection
+
 ✅ Recharge / Top-Up Support
+
 ✅ Real-Time Billing System
+
 ✅ Cashless Supermarket Automation
 
 🛠️ Technologies Used
